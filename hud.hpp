@@ -19,7 +19,7 @@ public:
 private:
   Glib::RefPtr<Gst::Bin> bin;
 
-}
+};
 
 
 

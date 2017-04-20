@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <iostream>
 
+#include "hud.hpp"
+
 Glib::RefPtr<Glib::MainLoop> mainloop;
 
 // This function is used to receive asynchronous messages in the main loop.
@@ -17,7 +19,22 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& /* bus */,
       return false;
     case Gst::MESSAGE_ERROR:
       {
-        std::cerr << "Error." << std::endl;
+
+
+        Glib::RefPtr<Gst::MessageError> msgError =
+          Glib::RefPtr<Gst::MessageError>::cast_static(message);
+
+        if(msgError)
+        {
+          Glib::Error err;
+          err = msgError->parse();
+          std::string debug;
+          debug = msgError->parse_debug();
+          std::cerr << "Error: " << err.what() << std::endl;
+          std::cerr << "       " << debug << std::endl;
+        }
+        else
+          std::cerr << "Error." << std::endl;
 
         mainloop->quit();
         return false;
@@ -32,7 +49,7 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& /* bus */,
 int main(int argc, char** argv)
 {
   Glib::RefPtr<Gst::Pipeline> pipeline;
-  Glib::RefPtr<Gst::Element> element_source, element_hud, element_sink;
+  Glib::RefPtr<Gst::Element> element_source, element_hud, element_cvt, element_sink;
 
   // Initialize Gstreamermm:
   Gst::init(argc, argv);
@@ -45,12 +62,13 @@ int main(int argc, char** argv)
   // Create elements:
   element_source = Gst::ElementFactory::create_element("videotestsrc");
   element_hud = hud.element();
+  element_cvt = Gst::ElementFactory::create_element("videoconvert");
   element_sink = Gst::ElementFactory::create_element("autovideosink");
 
   // We must add the elements to the pipeline before linking them:
   try
   {
-    pipeline->add(element_source)->add(element_hud)->add(element_sink);
+    pipeline->add(element_source)->add(element_hud)->add(element_cvt)->add(element_sink);
   }
   catch (std::runtime_error& ex)
   {
@@ -61,7 +79,7 @@ int main(int argc, char** argv)
   // Link the elements together:
   try
   {
-    element_source->link(element_hud)->link(element_sink);
+    element_source->link(element_hud)->link(element_cvt)->link(element_sink);
   }
   catch(const std::runtime_error& error)
   {
