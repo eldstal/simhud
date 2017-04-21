@@ -49,26 +49,47 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& /* bus */,
 int main(int argc, char** argv)
 {
   Glib::RefPtr<Gst::Pipeline> pipeline;
-  Glib::RefPtr<Gst::Element> element_source, element_hud, element_cvt, element_sink;
+  Glib::RefPtr<Gst::Element> e_source;
+  Glib::RefPtr<Gst::Element> e_hud;
+  Glib::RefPtr<Gst::Element> e_cvt;
+  Glib::RefPtr<Gst::Element> e_sink;
+
+  // Format filters
+  Glib::RefPtr<Gst::Caps> caps_informat;
+  Glib::RefPtr<Gst::Caps> caps_outformat;
 
   // Initialize Gstreamermm:
   Gst::init(argc, argv);
 
   // Create pipeline:
-  pipeline = Gst::Pipeline::create("my-pipeline");
+  pipeline = Gst::Pipeline::create("simhud-pipeline");
 
   SimHUD hud;
 
   // Create elements:
-  element_source = Gst::ElementFactory::create_element("videotestsrc");
-  element_hud = hud.element();
-  element_cvt = Gst::ElementFactory::create_element("videoconvert");
-  element_sink = Gst::ElementFactory::create_element("autovideosink");
+  e_source = Gst::ElementFactory::create_element("videotestsrc");
+  e_hud = hud.element();
+  e_cvt = Gst::ElementFactory::create_element("videoconvert");
+  e_sink = Gst::ElementFactory::create_element("autovideosink");
+
+  // Define filtering capabilities to force video formats
+  caps_informat  = Gst::Caps::create_simple("video/x-raw");
+  caps_informat->set_value("width", 1920);
+  caps_informat->set_value("height", 1080);
+
+  caps_outformat = Gst::Caps::create_simple("video/x-raw");
+  caps_informat->set_value("width", 1280);
+  caps_informat->set_value("height", 720);
+
 
   // We must add the elements to the pipeline before linking them:
   try
   {
-    pipeline->add(element_source)->add(element_hud)->add(element_cvt)->add(element_sink);
+    pipeline
+      ->add(e_source)
+      ->add(e_hud)
+      ->add(e_cvt)
+      ->add(e_sink);
   }
   catch (std::runtime_error& ex)
   {
@@ -79,7 +100,10 @@ int main(int argc, char** argv)
   // Link the elements together:
   try
   {
-    element_source->link(element_hud)->link(element_cvt)->link(element_sink);
+    e_source
+      ->link(e_hud, caps_informat)
+      ->link(e_cvt)
+      ->link(e_sink, caps_outformat);
   }
   catch(const std::runtime_error& error)
   {
@@ -91,11 +115,15 @@ int main(int argc, char** argv)
   // Create the main loop.
   mainloop = Glib::MainLoop::create();
 
-  // Get the bus from the playbin, and add a bus watch to the default main
-  // context with the default priority:
+  // Add a bus watcher
   Glib::RefPtr<Gst::Bus> bus = pipeline->get_bus();
   bus->add_watch(sigc::ptr_fun(&on_bus_message));
 
+  // Let the HUD figure out frame size and stuff
+  std::cout << "Setting to PAUSED." << std::endl;
+  pipeline->set_state(Gst::STATE_PAUSED);
+
+  // Go!
   std::cout << "Setting to PLAYING." << std::endl;
   pipeline->set_state(Gst::STATE_PLAYING);
 

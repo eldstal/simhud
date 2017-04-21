@@ -4,6 +4,7 @@
 #include <glibmm/refptr.h>
 
 class SimHUD {
+  typedef Glib::RefPtr<Gst::Element> Elm;
 
 public:
 
@@ -18,6 +19,14 @@ public:
 
 private:
   Glib::RefPtr<Gst::Bin> bin;
+  Elm e_timestamp;
+  Elm e_leftbox;
+  Elm e_rightbox;
+  Elm e_bottombox;
+
+  // Set text properties, shading, etc.
+  Elm createTextElement(int horizontal, double ypos);
+  void setupTextElement(Elm &element, int horizontal, double ypos);
 
 };
 
