@@ -3,13 +3,15 @@
 #include <glibmm/convert.h>
 #include <stdlib.h>
 #include <iostream>
+#include <unistd.h>
 
 #include "hud.hpp"
 
 Glib::RefPtr<Glib::MainLoop> mainloop;
+SimHUD* hud = NULL;
 
 // This function is used to receive asynchronous messages in the main loop.
-bool on_bus_message(const Glib::RefPtr<Gst::Bus>& /* bus */,
+bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
     const Glib::RefPtr<Gst::Message>& message)
 {
   switch(message->get_message_type()) {
@@ -39,7 +41,9 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& /* bus */,
         mainloop->quit();
         return false;
       }
+
     default:
+      if (hud) hud->bus_message(bus, message);
       break;
   }
 
@@ -64,11 +68,11 @@ int main(int argc, char** argv)
   // Create pipeline:
   pipeline = Gst::Pipeline::create("simhud-pipeline");
 
-  SimHUD hud;
+  hud = new SimHUD();
 
   // Create elements:
   e_source = Gst::ElementFactory::create_element("videotestsrc");
-  e_hud = hud.element();
+  e_hud = hud->element();
   e_cvt = Gst::ElementFactory::create_element("videoconvert");
   e_sink = Gst::ElementFactory::create_element("autovideosink");
 
@@ -115,8 +119,9 @@ int main(int argc, char** argv)
   // Create the main loop.
   mainloop = Glib::MainLoop::create();
 
-  // Add a bus watcher
+  // Add a bus watcher and also allow the HUD to listen to bus events
   Glib::RefPtr<Gst::Bus> bus = pipeline->get_bus();
+  //bus->add_watch(sigc::mem_fun(hud, &SimHUD::bus_message));
   bus->add_watch(sigc::ptr_fun(&on_bus_message));
 
   // Let the HUD figure out frame size and stuff

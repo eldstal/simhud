@@ -7,6 +7,8 @@
 
 using namespace Glib;
 using namespace Gst;
+using std::cerr;
+using std::endl;
 
 SimHUD::SimHUD() {
   this->bin = Gst::Bin::create("sim-hud");
@@ -25,6 +27,8 @@ SimHUD::SimHUD() {
   e_bottombox->set_property<ustring>("text", "Just one line...");
   e_rightbox->set_property<ustring>("text", "Line one\nLine two");
 
+  e_overlay = ElementFactory::create_element("gdkpixbufoverlay");
+
 
   try {
     bin
@@ -32,13 +36,15 @@ SimHUD::SimHUD() {
       ->add(e_timestamp)
       ->add(e_leftbox)
       ->add(e_bottombox)
-      ->add(e_rightbox);
+      ->add(e_rightbox)
+      ->add(e_overlay);
 
     identity
       ->link(e_timestamp)
       ->link(e_leftbox)
       ->link(e_bottombox)
-      ->link(e_rightbox);
+      ->link(e_rightbox)
+      ->link(e_overlay);
 
   } catch (const std::runtime_error& ex) {
     std::cerr << "Exception while adding: " << ex.what() << std::endl;
@@ -46,14 +52,56 @@ SimHUD::SimHUD() {
 
   // Map out the sink (input) and source (output) of our HUD filter
   bin->add_ghost_pad(identity, "sink", "sink");
-  bin->add_ghost_pad(e_rightbox, "src", "src");
+  bin->add_ghost_pad(e_overlay, "src", "src");
 
 }
 
 
 
-Glib::RefPtr<Gst::Bin> SimHUD::element() {
+RefPtr<Gst::Bin> SimHUD::element() {
   return this->bin;
+}
+
+void SimHUD::reconfigure() {
+  RefPtr<Gst::Pad> input = bin->get_static_pad("sink");
+  if (!input) {
+    cerr << "Unable to reconfigure HUD: No pad found." << endl;
+    return;
+  }
+
+  RefPtr<Gst::Caps> format = input->get_current_caps();
+  if (!format) {
+    cerr << "Unable to reconfigure HUD: No caps found." << endl;
+    return;
+  }
+
+  const Gst::Structure strct = format->get_structure(0);
+
+  Glib::Value<int32_t> width, height;
+
+  strct.get_field("width", width);
+  strct.get_field("height", height);
+
+  int32_t w = width.get();
+  int32_t h = height.get();
+
+  cerr << "Reconfiguring for stream size " << w << "x" << h << endl;
+
+  // TODO: Swap out pixbuf object for a new one of the right size
+}
+
+
+
+bool SimHUD::bus_message(const Glib::RefPtr<Gst::Bus>& bus, const Glib::RefPtr<Gst::Message>& message) {
+  switch(message->get_message_type()) {
+    case Gst::MESSAGE_STATE_CHANGED:
+      reconfigure();
+      break;
+    default:
+      break;
+  }
+  return true;
+
 }
 
 void SimHUD::setupTextElement(Elm& element, int horizontal, double ypos) {
@@ -67,7 +115,6 @@ void SimHUD::setupTextElement(Elm& element, int horizontal, double ypos) {
   element->set_property<uint32_t>("outline-color", 0xFF000000);
 
   element->set_property<bool>("draw-shadow", false);
-  element->set_property<uint32_t>("shadow-color", 0xFF000000);
 
   element->set_property<bool>("shaded-background", true);
   element->set_property<uint8_t>("shading-value", 120);
