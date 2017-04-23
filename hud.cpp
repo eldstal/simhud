@@ -6,12 +6,13 @@
 #include "hud.hpp"
 
 using namespace Glib;
+using namespace Gdk;
 using namespace Gst;
 using std::cerr;
 using std::endl;
 
 SimHUD::SimHUD() {
-  this->bin = Gst::Bin::create("sim-hud");
+  bin = Gst::Bin::create("sim-hud");
 
   RefPtr<Element> identity = ElementFactory::create_element("identity");
 
@@ -85,9 +86,20 @@ void SimHUD::reconfigure() {
   int32_t w = width.get();
   int32_t h = height.get();
 
-  cerr << "Reconfiguring for stream size " << w << "x" << h << endl;
+  w = 10;
+  h = 10;
 
-  // TODO: Swap out pixbuf object for a new one of the right size
+  if (!this->overlay_back ||
+      this->overlay_back->get_width() != w ||
+      this->overlay_back->get_height() != h) {
+    cerr << "Reconfiguring for stream size " << w << "x" << h << endl;
+
+    // Create a new pixel buffer pair
+    this->overlay_back = Pixbuf::create(Gdk::Colorspace::COLORSPACE_RGB, 1, 8, w, h);
+    this->overlay_front = Pixbuf::create(Gdk::Colorspace::COLORSPACE_RGB, 1, 8, w, h);
+
+    redraw();
+  }
 }
 
 
@@ -159,3 +171,17 @@ SimHUD::Elm SimHUD::createTextElement(int horizontal, double ypos) {
   return ret;
 }
 
+
+void SimHUD::redraw() {
+
+    if (!overlay_back ||
+        !overlay_front) {
+      cerr << "Null draw buffer. Not drawing the HUD." << endl;
+      return;
+    }
+
+    //this->overlay_front.swap(this->overlay_back);
+
+    // Swap the drawn buffer into the overlay filter for actual drawing onto the video stream
+    //this->e_overlay->set_property< GdkPixbuf* >("pixbuf", this->overlay_front->gobj());
+}

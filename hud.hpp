@@ -35,12 +35,18 @@ private:
   Elm e_bottombox;
   Elm e_overlay;
 
-  Glib::RefPtr<Gdk::Pixbuf> overlay;
+  // An image of the same size as the video stream
+  // We do double buffering to be able to modify in peace
+  // front is the one currently being displayed, back is safe to draw on.
+  Glib::RefPtr<Gdk::Pixbuf> overlay_front;
+  Glib::RefPtr<Gdk::Pixbuf> overlay_back;
 
   // Set text properties, shading, etc.
   Elm createTextElement(int horizontal, double ypos);
   void setupTextElement(Elm &element, int horizontal, double ypos);
 
+  // Draw the HUD onto the overlay image
+  void redraw();
 };
 
 

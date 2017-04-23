@@ -1,4 +1,5 @@
 #include <gstreamermm.h>
+#include <gdkmm.h>
 #include <glibmm/main.h>
 #include <glibmm/convert.h>
 #include <stdlib.h>
@@ -52,6 +53,10 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
 
 int main(int argc, char** argv)
 {
+
+  // Initialize librariest
+  Gst::init(argc, argv);
+
   Glib::RefPtr<Gst::Pipeline> pipeline;
   Glib::RefPtr<Gst::Element> e_source;
   Glib::RefPtr<Gst::Element> e_hud;
@@ -62,9 +67,6 @@ int main(int argc, char** argv)
   Glib::RefPtr<Gst::Caps> caps_informat;
   Glib::RefPtr<Gst::Caps> caps_outformat;
 
-  // Initialize Gstreamermm:
-  Gst::init(argc, argv);
-
   // Create pipeline:
   pipeline = Gst::Pipeline::create("simhud-pipeline");
 
@@ -72,18 +74,20 @@ int main(int argc, char** argv)
 
   // Create elements:
   e_source = Gst::ElementFactory::create_element("videotestsrc");
+  e_source->set_property<int32_t>("pattern", 0);   // 18=Ball, 0=bars
   e_hud = hud->element();
   e_cvt = Gst::ElementFactory::create_element("videoconvert");
   e_sink = Gst::ElementFactory::create_element("autovideosink");
 
   // Define filtering capabilities to force video formats
   caps_informat  = Gst::Caps::create_simple("video/x-raw");
+  caps_informat->set_value("framerate", Gst::Fraction(30,1));
   caps_informat->set_value("width", 1920);
   caps_informat->set_value("height", 1080);
 
   caps_outformat = Gst::Caps::create_simple("video/x-raw");
-  caps_informat->set_value("width", 1280);
-  caps_informat->set_value("height", 720);
+  caps_informat->set_value("width", 1920);
+  caps_informat->set_value("height", 1080);
 
 
   // We must add the elements to the pipeline before linking them:
