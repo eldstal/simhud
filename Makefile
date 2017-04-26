@@ -1,4 +1,4 @@
-GSTFLAGS=`pkg-config --cflags --libs gstreamermm-1.0 glibmm-2.4 gdkmm-2.4`
+GSTFLAGS=`pkg-config --cflags --libs gstreamermm-1.0 glibmm-2.4 cairomm-1.0`
 
 CFLAGS=-ggdb -Wno-deprecated-declarations
 

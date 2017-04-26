@@ -1,15 +1,22 @@
 #include <gstreamermm.h>
 #include <iostream>
 #include <inttypes.h>
+#include <cairomm/cairomm.h>
 
 
 #include "hud.hpp"
 
 using namespace Glib;
-using namespace Gdk;
 using namespace Gst;
 using std::cerr;
 using std::endl;
+
+// Used for the cairooverlay draw function
+typedef struct {
+  gboolean valid;
+  int width;
+  int height;
+} CairoOverlayState;
 
 SimHUD::SimHUD() {
   bin = Gst::Bin::create("sim-hud");
@@ -20,31 +27,19 @@ SimHUD::SimHUD() {
   setupTextElement(e_timestamp, 0, 0.0);
   e_timestamp->set_property<ustring>("time-format", "%F %T");
 
-  e_leftbox = createTextElement(-1, 1.0);
-  e_bottombox = createTextElement(0, 1.0);
-  e_rightbox = createTextElement(1, 1.0);
-
-  e_leftbox->set_property<ustring>("text", "Line one\nLine two");
-  e_bottombox->set_property<ustring>("text", "Just one line...");
-  e_rightbox->set_property<ustring>("text", "Line one\nLine two");
-
-  e_overlay = ElementFactory::create_element("gdkpixbufoverlay");
+  e_overlay = ElementFactory::create_element("cairooverlay");
+  e_overlay->signal_ // TODO: Connect this->prepare_overlay to the right signal
+  // TODO: That other signal, too
 
 
   try {
     bin
       ->add(identity)
       ->add(e_timestamp)
-      ->add(e_leftbox)
-      ->add(e_bottombox)
-      ->add(e_rightbox)
       ->add(e_overlay);
 
     identity
       ->link(e_timestamp)
-      ->link(e_leftbox)
-      ->link(e_bottombox)
-      ->link(e_rightbox)
       ->link(e_overlay);
 
   } catch (const std::runtime_error& ex) {
@@ -61,59 +56,6 @@ SimHUD::SimHUD() {
 
 RefPtr<Gst::Bin> SimHUD::element() {
   return this->bin;
-}
-
-void SimHUD::reconfigure() {
-  RefPtr<Gst::Pad> input = bin->get_static_pad("sink");
-  if (!input) {
-    cerr << "Unable to reconfigure HUD: No pad found." << endl;
-    return;
-  }
-
-  RefPtr<Gst::Caps> format = input->get_current_caps();
-  if (!format) {
-    cerr << "Unable to reconfigure HUD: No caps found." << endl;
-    return;
-  }
-
-  const Gst::Structure strct = format->get_structure(0);
-
-  Glib::Value<int32_t> width, height;
-
-  strct.get_field("width", width);
-  strct.get_field("height", height);
-
-  int32_t w = width.get();
-  int32_t h = height.get();
-
-  w = 10;
-  h = 10;
-
-  if (!this->overlay_back ||
-      this->overlay_back->get_width() != w ||
-      this->overlay_back->get_height() != h) {
-    cerr << "Reconfiguring for stream size " << w << "x" << h << endl;
-
-    // Create a new pixel buffer pair
-    this->overlay_back = Pixbuf::create(Gdk::Colorspace::COLORSPACE_RGB, 1, 8, w, h);
-    this->overlay_front = Pixbuf::create(Gdk::Colorspace::COLORSPACE_RGB, 1, 8, w, h);
-
-    redraw();
-  }
-}
-
-
-
-bool SimHUD::bus_message(const Glib::RefPtr<Gst::Bus>& bus, const Glib::RefPtr<Gst::Message>& message) {
-  switch(message->get_message_type()) {
-    case Gst::MESSAGE_STATE_CHANGED:
-      reconfigure();
-      break;
-    default:
-      break;
-  }
-  return true;
-
 }
 
 void SimHUD::setupTextElement(Elm& element, int horizontal, double ypos) {
@@ -172,16 +114,6 @@ SimHUD::Elm SimHUD::createTextElement(int horizontal, double ypos) {
 }
 
 
-void SimHUD::redraw() {
+void SimHUD::prepare_overlay(Elm overlay, Glib::RefPtr<Gst::Caps> caps, Glib::RefPtr<void> userdata) {
 
-    if (!overlay_back ||
-        !overlay_front) {
-      cerr << "Null draw buffer. Not drawing the HUD." << endl;
-      return;
-    }
-
-    //this->overlay_front.swap(this->overlay_back);
-
-    // Swap the drawn buffer into the overlay filter for actual drawing onto the video stream
-    //this->e_overlay->set_property< GdkPixbuf* >("pixbuf", this->overlay_front->gobj());
 }

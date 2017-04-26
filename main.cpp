@@ -1,5 +1,4 @@
 #include <gstreamermm.h>
-#include <gdkmm.h>
 #include <glibmm/main.h>
 #include <glibmm/convert.h>
 #include <stdlib.h>
@@ -42,10 +41,6 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
         mainloop->quit();
         return false;
       }
-
-    default:
-      if (hud) hud->bus_message(bus, message);
-      break;
   }
 
   return true;
@@ -54,8 +49,9 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
 int main(int argc, char** argv)
 {
 
-  // Initialize librariest
+  // Initialize libraries
   Gst::init(argc, argv);
+  //Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "org.snutt.simhud");
 
   Glib::RefPtr<Gst::Pipeline> pipeline;
   Glib::RefPtr<Gst::Element> e_source;
@@ -125,7 +121,6 @@ int main(int argc, char** argv)
 
   // Add a bus watcher and also allow the HUD to listen to bus events
   Glib::RefPtr<Gst::Bus> bus = pipeline->get_bus();
-  //bus->add_watch(sigc::mem_fun(hud, &SimHUD::bus_message));
   bus->add_watch(sigc::ptr_fun(&on_bus_message));
 
   // Let the HUD figure out frame size and stuff
