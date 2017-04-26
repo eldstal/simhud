@@ -27,9 +27,18 @@ SimHUD::SimHUD() {
   setupTextElement(e_timestamp, 0, 0.0);
   e_timestamp->set_property<ustring>("time-format", "%F %T");
 
+  // gstreamermm doesn't have wrapers for these signal functions. We use the C API.
   e_overlay = ElementFactory::create_element("cairooverlay");
-  e_overlay->signal_ // TODO: Connect this->prepare_overlay to the right signal
-  // TODO: That other signal, too
+  this->info_valid = false;
+  this->stream_info = gst_video_info_new();
+  g_signal_connect(e_overlay->gobj(),
+                   "caps-changed",
+                   G_CALLBACK(SimHUD::prepare_overlay),
+                   this);
+  g_signal_connect(e_overlay->gobj(),
+                   "draw",
+                   G_CALLBACK(SimHUD::draw_overlay),
+                   this);
 
 
   try {
@@ -114,6 +123,41 @@ SimHUD::Elm SimHUD::createTextElement(int horizontal, double ypos) {
 }
 
 
-void SimHUD::prepare_overlay(Elm overlay, Glib::RefPtr<Gst::Caps> caps, Glib::RefPtr<void> userdata) {
+void SimHUD::prepare_overlay(GstElement* overlay, GstCaps* caps, gpointer hud) {
+  SimHUD* self = (SimHUD*) hud;
 
+  GstVideoInfo info;
+
+  // Save the video settings so that draw_overlay() has
+  // dimensions to work with
+  if (!gst_video_info_from_caps(self->stream_info, caps)) {
+    cerr << "Warning: Invalid capabilities!" << endl;
+  } else {
+    self->info_valid = true;
+  }
+
+}
+
+void SimHUD::draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, guint64 duration, gpointer hud) {
+  SimHUD* self = (SimHUD*) hud;
+
+  if (!self->info_valid) {
+    cerr << "Attempted to draw before video stream is identified. Not drawing HUD." << endl;
+    return;
+  }
+
+  Cairo::Context c(cr);
+
+  int w = GST_VIDEO_INFO_WIDTH(self->stream_info);
+  int h = GST_VIDEO_INFO_HEIGHT(self->stream_info);
+
+  
+
+
+  c.set_source_rgb(0.0, 0.0, 0.0);
+  c.rectangle(0, 0, 300, 300);
+  c.stroke();
+
+  c.set_source_rgb(0.7, 0.3, 0.3);
+  c.fill();
 }
