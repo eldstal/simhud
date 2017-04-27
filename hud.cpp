@@ -3,20 +3,22 @@
 #include <inttypes.h>
 #include <cairomm/cairomm.h>
 
+#include <pangomm.h>
+#include <pangomm/tabarray.h>
+#include <pango/pangocairo.h>
+
+#include <sstream>
+#include <string>
+#include <iomanip>
+
 
 #include "hud.hpp"
 
 using namespace Glib;
 using namespace Gst;
+using std::string;
 using std::cerr;
 using std::endl;
-
-// Used for the cairooverlay draw function
-typedef struct {
-  gboolean valid;
-  int width;
-  int height;
-} CairoOverlayState;
 
 SimHUD::SimHUD() {
   bin = Gst::Bin::create("sim-hud");
@@ -67,10 +69,15 @@ RefPtr<Gst::Bin> SimHUD::element() {
   return this->bin;
 }
 
+void SimHUD::set_values(const SensorValues& v) {
+  // TODO: locking
+  this->sensors = v;
+}
+
 void SimHUD::setupTextElement(Elm& element, int horizontal, double ypos) {
 
   // Appearance
-  element->set_property<ustring>("font-desc", "Monospace Light 16");
+  element->set_property<ustring>("font-desc", "Calibri Light 16");
 
   element->set_property<bool>("auto-resize", false);
 
@@ -147,17 +154,72 @@ void SimHUD::draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, 
   }
 
   Cairo::Context c(cr);
+  Cairo::RefPtr<Cairo::Context> cairo = Cairo::Context::create(c.get_target());
 
   int w = GST_VIDEO_INFO_WIDTH(self->stream_info);
   int h = GST_VIDEO_INFO_HEIGHT(self->stream_info);
 
-  
+  //
+  // Layout parameters
+  //
+  int margin = 10;
+  int padding = 10;
+  float shading = 0.4;
+
+  // A rendering context for all the text on the screen
+  RefPtr<Pango::Context> ctx = Glib::wrap(pango_cairo_create_context(cr));
+  Pango::FontDescription font("Calibri Light 16");
+  ctx->set_font_description(font);
+
+  //
+  // A "paragraph" of text on the left-hand edge of the screen
+  //
+  RefPtr<Pango::Layout> left_text = Pango::Layout::create(ctx);
+
+  int colwidth=w/8;
+  colwidth = colwidth > 120 ? 120 : colwidth;
+  Pango::TabArray tabs(1,true);
+  tabs.set_tab(0, Pango::TabAlign::TAB_LEFT, colwidth);
+  left_text->set_tabs(tabs);
+
+  // TODO: Locking
+  SensorValues sens = self->sensors;
+
+  //
+  // Generate left pane text
+  //
+  std::ostringstream text;
+  text
+       << std::setprecision(4)
+       << "Depth:\t" << sens.depth << "m\n"
+       << "\n"
+       << "Voltage:\t" << sens.depth << "V\n"
+       << "Current:\t" << sens.depth << "A\n"
+       << "\n"
+       << "Ext. Temp:\t" << sens.temp_external << "°C\n"
+       << "Int. Temp:\t" << sens.internal.temp << "°C\n"
+       << "Int. Humidity:\t" << sens.internal.temp << "%\n"
+  ;
 
 
-  c.set_source_rgb(0.0, 0.0, 0.0);
-  c.rectangle(0, 0, 300, 300);
-  c.stroke();
+  left_text->set_text(text.str());
 
-  c.set_source_rgb(0.7, 0.3, 0.3);
-  c.fill();
+
+
+  //
+  // Position elements on the canvas
+  //
+  int tw, th;
+  left_text->get_pixel_size(tw, th);
+  int tx = margin;
+  int ty = h - (margin + th + 2*padding);
+  cairo->set_source_rgba(0.0, 0.0, 0.0, shading);
+  cairo->rectangle(tx, ty, tw+2*padding, th+2*padding);
+  cairo->fill();
+  cairo->move_to(tx+padding, ty+padding);
+  cairo->set_source_rgb(0.8, 0.8, 0.8);
+  left_text->show_in_cairo_context(cairo);
+
+
+  cairo->stroke();
 }

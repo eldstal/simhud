@@ -1,6 +1,7 @@
 #include <gstreamermm.h>
 #include <glibmm/main.h>
 #include <glibmm/convert.h>
+#include <gtkmm/application.h>
 #include <stdlib.h>
 #include <iostream>
 #include <unistd.h>
@@ -51,7 +52,7 @@ int main(int argc, char** argv)
 
   // Initialize libraries
   Gst::init(argc, argv);
-  //Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "org.snutt.simhud");
+  Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "org.snutt.simhud");
 
   Glib::RefPtr<Gst::Pipeline> pipeline;
   Glib::RefPtr<Gst::Element> e_source;
@@ -84,6 +85,8 @@ int main(int argc, char** argv)
   caps_outformat = Gst::Caps::create_simple("video/x-raw");
   caps_informat->set_value("width", 1920);
   caps_informat->set_value("height", 1080);
+  //caps_informat->set_value("width", 1280);
+  //caps_informat->set_value("height", 720);
 
 
   // We must add the elements to the pipeline before linking them:

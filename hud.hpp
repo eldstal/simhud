@@ -4,6 +4,8 @@
 #include <gstreamermm.h>
 #include <glibmm/refptr.h>
 
+#include "sensors.hpp"
+
 
 class SimHUD {
   typedef Glib::RefPtr<Gst::Element> Elm;
@@ -18,11 +20,19 @@ public:
    */
   Glib::RefPtr<Gst::Bin> element();
 
+  /*
+   * Update sensor values to be drawn
+   */
+  void set_values(const SensorValues& v);
 
 private:
   Glib::RefPtr<Gst::Bin> bin;
   Elm e_timestamp;
   Elm e_overlay;
+
+  // Latest batch of sensor data
+  SensorValues sensors;
+
 
   // Properties of the video stream
   // We're forced to revert to the C api by the cairo overlay
