@@ -2,8 +2,8 @@ GSTFLAGS=`pkg-config --cflags --libs gstreamermm-1.0 glibmm-2.4 cairomm-1.0 pang
 
 CFLAGS=-ggdb -Wno-deprecated-declarations
 
-OBJ=main.o hud.o
-HEADER=sensors.hpp
+OBJ=main.o sensors.o hud.o
+HEADER=sensors.hpp hud.hpp
 
 all: simhud
 

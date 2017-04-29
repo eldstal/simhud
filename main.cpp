@@ -11,6 +11,8 @@
 Glib::RefPtr<Glib::MainLoop> mainloop;
 SimHUD* hud = NULL;
 
+bool stop;
+
 // This function is used to receive asynchronous messages in the main loop.
 bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
     const Glib::RefPtr<Gst::Message>& message)
@@ -19,6 +21,7 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
     case Gst::MESSAGE_EOS:
       std::cout << std::endl << "End of stream" << std::endl;
       mainloop->quit();
+      stop = true;
       return false;
     case Gst::MESSAGE_ERROR:
       {
@@ -40,6 +43,7 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
           std::cerr << "Error." << std::endl;
 
         mainloop->quit();
+        stop = true;
         return false;
       }
   }
@@ -135,7 +139,16 @@ int main(int argc, char** argv)
   pipeline->set_state(Gst::STATE_PLAYING);
 
   std::cout << "Running." << std::endl;
-  mainloop->run();
+  //mainloop->run();
+
+  stop = false;
+  while (!stop) {
+    SensorValues values;
+    query_sensors(values);
+    hud->set_values(values);
+
+    usleep(500000);
+  }
 
   // Clean up nicely:
   std::cout << "Returned. Setting state to NULL." << std::endl;

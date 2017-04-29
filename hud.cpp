@@ -190,15 +190,15 @@ void SimHUD::draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, 
   //
   std::ostringstream text;
   text
-       << std::setprecision(4)
+       << std::setprecision(3)
        << "Depth:\t" << sens.depth << "m\n"
        << "\n"
-       << "Voltage:\t" << sens.depth << "V\n"
-       << "Current:\t" << sens.depth << "A\n"
+       << "Voltage:\t" << sens.power.voltage << "V\n"
+       << "Current:\t" << sens.power.current << "A\n"
        << "\n"
        << "Ext. Temp:\t" << sens.temp_external << "°C\n"
        << "Int. Temp:\t" << sens.internal.temp << "°C\n"
-       << "Int. Humidity:\t" << sens.internal.temp << "%\n"
+       << "Int. Humidity:\t" << (uint32_t) sens.internal.humidity << "%\n"
   ;
 
 
