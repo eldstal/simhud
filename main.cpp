@@ -87,8 +87,8 @@ int main(int argc, char** argv)
   caps_informat->set_value("height", 1080);
 
   caps_outformat = Gst::Caps::create_simple("video/x-raw");
-  caps_informat->set_value("width", 1920);
-  caps_informat->set_value("height", 1080);
+  //caps_informat->set_value("width", 1920);
+  //caps_informat->set_value("height", 1080);
   caps_informat->set_value("width", 1280);
   caps_informat->set_value("height", 720);
 
