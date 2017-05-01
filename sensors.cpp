@@ -138,7 +138,7 @@ void query_radar(SensorValues& out) {
     ImpulseSource<int>(5200, max-80, 30,  1010, 10),
     ImpulseSource<int>(6100, max-50, -9,  1200, 10),
     ImpulseSource<int>(3000, max-20, 10,  1000, 10),
-    ImpulseSource<int>(4600, max-70, -20, 1080, 10),
+    ImpulseSource<int>(4600, max-50, -20, 1080, 10),
     ImpulseSource<int>(6000, max-25, 20,  1300, 5),
     ImpulseSource<int>(5200, max-30, 10,  1020, 10),
     ImpulseSource<int>(3000, max-35, 15,  1000, 10),

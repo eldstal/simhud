@@ -253,7 +253,6 @@ void SimHUD::draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, 
 }
 
 void SimHUD::draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo, double width, double height) {
-  cairo->set_source_rgb(1, 1, 1);
   cairo->set_line_width(1.5);
   //cairo->rectangle(0, 0, width, height);
   //cairo->stroke();
@@ -280,7 +279,17 @@ void SimHUD::draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo,
     max_radius = r_w;
   }
 
+  // Draw a shaded arc at max distance
+  cairo->save();
+    cairo->set_source_rgb(0.8, 0.8, 0.8);
+    cairo->set_line_width(0.8);
+    double start_r = (3*M_PI/2) - (fov_r/2);
+    cairo->arc(cx,cy, max_radius, start_r, start_r + fov_r);
+    cairo->stroke();
+  cairo->restore();
 
+  cairo->begin_new_path();
+  cairo->set_source_rgb(1, 1, 1);
   // Start our "pie slice" at the tip
   cairo->move_to(cx, cy);
 
@@ -290,6 +299,8 @@ void SimHUD::draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo,
   for (int s=0; s<SENSOR_RADAR_STEPS; ++s) {
 
     double r = max_radius * ((double) sens.radar.dist[s] / sens.radar.max);
+
+    if (r > max_radius) r = max_radius;
 
     // Starting point of the arc
     double sx = cx - r * sin(angle);
