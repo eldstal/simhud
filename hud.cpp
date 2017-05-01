@@ -254,6 +254,7 @@ void SimHUD::draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, 
 
 void SimHUD::draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo, double width, double height) {
   cairo->set_source_rgb(1, 1, 1);
+  cairo->set_line_width(1.5);
   //cairo->rectangle(0, 0, width, height);
   //cairo->stroke();
 

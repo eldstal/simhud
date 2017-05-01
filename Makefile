@@ -13,7 +13,7 @@ run: simhud
 simhud: $(OBJ) $(HEADER)
 	g++ $(CFLAGS) -std=c++14 $(OBJ) -o $@ $(GSTFLAGS) 
 
-%.o: %.cpp
+%.o: %.cpp $(HEADER)
 	g++ $(CFLAGS) -std=c++14 -c $< -o $@ $(GSTFLAGS) 
 
 
