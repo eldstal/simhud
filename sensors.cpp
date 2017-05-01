@@ -132,6 +132,24 @@ void query_heading(SensorValues& out) {
 }
 
 void query_radar(SensorValues& out) {
+  static int max = 130;
+  static ImpulseSource<int> d[9] = {
+    ImpulseSource<int>(4000, max-30, 20,   500, 10),
+    ImpulseSource<int>(5200, max-80, 30,  1010, 10),
+    ImpulseSource<int>(6100, max-50, -9,  1200, 10),
+    ImpulseSource<int>(3000, max-20, 10,  1000, 10),
+    ImpulseSource<int>(4600, max-70, -20, 1080, 10),
+    ImpulseSource<int>(6000, max-25, 20,  1300, 5),
+    ImpulseSource<int>(5200, max-30, 10,  1020, 10),
+    ImpulseSource<int>(3000, max-35, 15,  1000, 10),
+    ImpulseSource<int>(900,  max-30, -30, 1000, 10)
+  };
+
+  out.radar.max = max;
+  out.radar.fov = 70;
+  for (int i=0; i<SENSOR_RADAR_STEPS; ++i) {
+    out.radar.dist[i] = d[i % 9].next();
+  }
 }
 
 void query_internal(SensorValues& out) {
@@ -162,6 +180,7 @@ void query_heading(SensorValues& out) {
 }
 
 void query_radar(SensorValues& out) {
+
 }
 
 void query_internal(SensorValues& out) {

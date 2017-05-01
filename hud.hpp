@@ -48,7 +48,12 @@ private:
   static void prepare_overlay(GstElement* overlay, GstCaps* caps, gpointer hud);
 
   static void draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, guint64 duration, gpointer hud);
+
+
+  // Draw the radar display
+  static void draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo, double width, double height);
 };
+
 
 
 

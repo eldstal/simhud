@@ -11,6 +11,8 @@
 #include <string>
 #include <iomanip>
 
+#include <cmath>
+
 
 #include "hud.hpp"
 
@@ -19,6 +21,9 @@ using namespace Gst;
 using std::string;
 using std::cerr;
 using std::endl;
+
+#define DEG(r) ((double) (r * 180.0) / M_PI)
+#define RAD(d) ((double) (d * M_PI) / 180.0)
 
 SimHUD::SimHUD() {
   bin = Gst::Bin::create("sim-hud");
@@ -176,8 +181,8 @@ void SimHUD::draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, 
   //
   RefPtr<Pango::Layout> left_text = Pango::Layout::create(ctx);
 
-  int colwidth=w/8;
-  colwidth = colwidth > 120 ? 120 : colwidth;
+  int colwidth=w/10;
+  colwidth = colwidth < 140 ? 140 : colwidth;
   Pango::TabArray tabs(1,true);
   tabs.set_tab(0, Pango::TabAlign::TAB_LEFT, colwidth);
   left_text->set_tabs(tabs);
@@ -198,28 +203,106 @@ void SimHUD::draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, 
        << "\n"
        << "Ext. Temp:\t" << sens.temp_external << "°C\n"
        << "Int. Temp:\t" << sens.internal.temp << "°C\n"
-       << "Int. Humidity:\t" << (uint32_t) sens.internal.humidity << "%\n"
+       << "Int. Humidity:\t" << (uint32_t) sens.internal.humidity << "%"
   ;
 
 
   left_text->set_text(text.str());
 
 
-
   //
-  // Position elements on the canvas
+  // Position text on the canvas
   //
   int tw, th;
   left_text->get_pixel_size(tw, th);
   int tx = margin;
   int ty = h - (margin + th + 2*padding);
-  cairo->set_source_rgba(0.0, 0.0, 0.0, shading);
-  cairo->rectangle(tx, ty, tw+2*padding, th+2*padding);
-  cairo->fill();
-  cairo->move_to(tx+padding, ty+padding);
-  cairo->set_source_rgb(0.8, 0.8, 0.8);
-  left_text->show_in_cairo_context(cairo);
+  cairo->save();
+    cairo->begin_new_path();
+    cairo->set_source_rgba(0.0, 0.0, 0.0, shading);
+    cairo->rectangle(tx, ty, tw+2*padding, th+2*padding);
+    cairo->fill();
+
+    cairo->begin_new_path();
+    cairo->move_to(tx+padding, ty+padding);
+    cairo->set_source_rgb(0.8, 0.8, 0.8);
+    left_text->show_in_cairo_context(cairo);
+    cairo->stroke();
+  cairo->restore();
 
 
+
+  //
+  // Draw the radar visualization in the top-right corner
+  //
+  int rw = w/8;
+  int rh = rw;
+  int rx = w - (rw + margin);
+  int ry = margin;
+  cairo->save();
+    cairo->set_source_rgba(0.0, 0.0, 0.0, shading);
+    cairo->rectangle(rx, ry, rw, rh);
+    cairo->fill();
+
+    cairo->begin_new_path();
+    cairo->translate(rx+padding, ry+padding);
+    draw_radar(sens, cairo, rw-(2*padding), rh-(2*padding));
+  cairo->restore();
+
+
+}
+
+void SimHUD::draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo, double width, double height) {
+  cairo->set_source_rgb(1, 1, 1);
+  //cairo->rectangle(0, 0, width, height);
+  //cairo->stroke();
+
+  double fov = sens.radar.fov;
+
+  // Centerpoint is at the bottom edge
+  double cx = width/2, cy = height;
+
+  // The radius of our circle is the longest we can fit
+  // given the FOV and the size of the box.
+  // This can either be limited by the height or the width.
+  double fov_r = RAD(fov);
+  double fov_h = (double) 2 * DEG(asin(width/(2*height)));
+  double r_w   = (double) width / (2*sin(RAD(fov/2)));
+
+
+  // If the height of the box is not limiting our arc,
+  // we'll draw it as wide as the width will allow
+  double max_radius = height;
+
+  if (fov_h < fov) {
+    // The height of the box is what limits our radius.
+    max_radius = r_w;
+  }
+
+
+  // Start our "pie slice" at the tip
+  cairo->move_to(cx, cy);
+
+  // For each of our "sectors", draw an arc
+  double sector = fov_r / SENSOR_RADAR_STEPS;
+  double angle = fov_r / 2;   // Start on the left edge
+  for (int s=0; s<SENSOR_RADAR_STEPS; ++s) {
+
+    double r = max_radius * ((double) sens.radar.dist[s] / sens.radar.max);
+
+    // Starting point of the arc
+    double sx = cx - r * sin(angle);
+    double sy = cy - r * cos(angle);
+    cairo->line_to(sx,sy);    // The radial joining sectors
+
+    // Ending point of the arc
+    angle -= sector;
+    double ex = cx - r * sin(angle);
+    double ey = cy - r * cos(angle);
+    cairo->line_to(ex,ey);
+
+  }
+
+  cairo->close_path();
   cairo->stroke();
 }

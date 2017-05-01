@@ -1,6 +1,8 @@
 #pragma once
 #include <inttypes.h>
 
+const int SENSOR_RADAR_STEPS = 16;
+
 typedef struct {
   float   temp_external;     // Degrees C
   float   depth;             // m
@@ -22,7 +24,13 @@ typedef struct {
     float x, y, z;        // Compass reading
   } heading;
 
-  int range[32];          // Distance forward at each angle
+  struct {
+    int fov;             // Angle of radar, in degrees
+                         // centered about forward vector
+                         // Distance forward at each angle
+    int max;             // Longest distance
+    int dist[SENSOR_RADAR_STEPS];
+  } radar;
 
   struct {
     float   temp;         // Degrees C
