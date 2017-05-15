@@ -8,6 +8,13 @@
 
 #include "hud.hpp"
 
+
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::string;
+
+
 Glib::RefPtr<Glib::MainLoop> mainloop;
 SimHUD* hud = NULL;
 
@@ -19,7 +26,7 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
 {
   switch(message->get_message_type()) {
     case Gst::MESSAGE_EOS:
-      std::cout << std::endl << "End of stream" << std::endl;
+      cout << std::endl << "End of stream" << endl;
       mainloop->quit();
       stop = true;
       return false;
@@ -34,13 +41,13 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
         {
           Glib::Error err;
           err = msgError->parse();
-          std::string debug;
+          string debug;
           debug = msgError->parse_debug();
-          std::cerr << "Error: " << err.what() << std::endl;
-          std::cerr << "       " << debug << std::endl;
+          cerr << "Error: " << err.what() << endl;
+          cerr << "       " << debug << endl;
         }
         else
-          std::cerr << "Error." << std::endl;
+          cerr << "Error." << endl;
 
         mainloop->quit();
         stop = true;
@@ -50,6 +57,118 @@ bool on_bus_message(const Glib::RefPtr<Gst::Bus>& bus ,
 
   return true;
 }
+
+Glib::RefPtr<Gst::Bin> dummy_webcam() {
+  Glib::RefPtr<Gst::Bin> ret = Gst::Bin::create("camera");
+  Glib::RefPtr<Gst::Caps> caps_capformat;
+
+  Glib::RefPtr<Gst::Element> src = Gst::ElementFactory::create_element("videotestsrc");
+  src->set_property<int32_t>("pattern", 0);   // 18=Ball, 0=bars
+
+  Glib::RefPtr<Gst::Element> conv = Gst::ElementFactory::create_element("videoconvert");
+
+  // Define filtering capabilities to force video formats
+  caps_capformat  = Gst::Caps::create_simple("video/x-raw");
+  caps_capformat->set_value("framerate", Gst::Fraction(30,1));
+  caps_capformat->set_value("width", 1280);
+  caps_capformat->set_value("height", 720);
+
+  try {
+    ret
+      ->add(src)
+      ->add(conv);
+
+    src
+      ->link(conv, caps_capformat);
+
+    ret->add_ghost_pad(conv, "src", "src");
+
+  } catch (const std::runtime_error& ex) {
+    cerr << "Unable to initialize dummy webcam source: " << ex.what() << ". " << endl;
+  }
+
+  return ret;
+}
+
+Glib::RefPtr<Gst::Bin> v4l_webcam(const char* source) {
+  Glib::RefPtr<Gst::Bin> ret = Gst::Bin::create("camera");
+  Glib::RefPtr<Gst::Caps> caps_capformat;
+
+  Glib::RefPtr<Gst::Element> cam = Gst::ElementFactory::create_element("v4l2src");
+  cam->set_property<Glib::ustring>("device", source);
+
+  Glib::RefPtr<Gst::Element> conv = Gst::ElementFactory::create_element("videoconvert");
+
+  // Define filtering capabilities to force video formats
+  caps_capformat  = Gst::Caps::create_simple("video/x-raw");
+  caps_capformat->set_value("framerate", Gst::Fraction(30,1));
+  caps_capformat->set_value("width", 1920);
+
+  try {
+    ret
+      ->add(cam)
+      ->add(conv);
+
+    cam
+      ->link(conv, caps_capformat);
+
+    ret->add_ghost_pad(conv, "src", "src");
+
+  } catch (const std::runtime_error& ex) {
+    cerr << "Unable to initialize V4L2 webcam source: " << ex.what() << ". Initiating fallback." << endl;
+  }
+
+
+
+  return ret;
+}
+
+
+Glib::RefPtr<Gst::Bin> h264_webcam(const char* source) {
+  Glib::RefPtr<Gst::Bin> ret = Gst::Bin::create("camera");
+  Glib::RefPtr<Gst::Caps> caps_capformat;
+
+  Glib::RefPtr<Gst::Element> cam = Gst::ElementFactory::create_element("uvch264src");
+  cam->set_property<Glib::ustring>("device", source);
+  cam->set_property<bool>("auto-start", true);
+
+  Glib::RefPtr<Gst::Element> queue = Gst::ElementFactory::create_element("queue");
+
+  // Define filtering capabilities to force video formats
+  caps_capformat  = Gst::Caps::create_simple("video/x-h264");
+  caps_capformat->set_value("framerate", Gst::Fraction(30,1));
+  caps_capformat->set_value("width", 1920);
+
+  Glib::RefPtr<Gst::Element> parse = Gst::ElementFactory::create_element("h264parse");
+  Glib::RefPtr<Gst::Element> decode = Gst::ElementFactory::create_element("avdec_h264");
+  Glib::RefPtr<Gst::Element> conv = Gst::ElementFactory::create_element("videoconvert");
+
+  try {
+    ret
+      ->add(cam)
+      ->add(queue)
+      ->add(parse)
+      ->add(decode)
+      ->add(conv);
+
+    cam->get_static_pad("vidsrc")->link(queue->get_static_pad("sink"));
+    queue
+      ->link(parse, caps_capformat)
+      ->link(decode)
+      ->link(conv);
+
+    ret->add_ghost_pad(conv, "src", "src");
+
+  } catch (const std::runtime_error& ex) {
+    cerr << "Unable to initialize H264 webcam source: " << ex.what() << ". Initiating fallback." << endl;
+    return v4l_webcam(source);
+  }
+
+
+
+  return ret;
+}
+
 
 int main(int argc, char** argv)
 {
@@ -74,23 +193,19 @@ int main(int argc, char** argv)
   hud = new SimHUD();
 
   // Create elements:
-  e_source = Gst::ElementFactory::create_element("videotestsrc");
-  e_source->set_property<int32_t>("pattern", 0);   // 18=Ball, 0=bars
+  if (argc > 1) {
+    // Webcam source
+    e_source = (Glib::RefPtr<Gst::Element>) v4l_webcam(argv[1]);
+  } else {
+    // Test source
+    e_source = (Glib::RefPtr<Gst::Element>) dummy_webcam();
+  }
+
   e_hud = hud->element();
   e_cvt = Gst::ElementFactory::create_element("videoconvert");
+
   e_sink = Gst::ElementFactory::create_element("autovideosink");
-
-  // Define filtering capabilities to force video formats
-  caps_informat  = Gst::Caps::create_simple("video/x-raw");
-  caps_informat->set_value("framerate", Gst::Fraction(30,1));
-  caps_informat->set_value("width", 1920);
-  caps_informat->set_value("height", 1080);
-
-  caps_outformat = Gst::Caps::create_simple("video/x-raw");
-  //caps_informat->set_value("width", 1920);
-  //caps_informat->set_value("height", 1080);
-  caps_informat->set_value("width", 1280);
-  caps_informat->set_value("height", 720);
+  e_sink->set_property<bool>("sync", true);
 
 
   // We must add the elements to the pipeline before linking them:
@@ -104,7 +219,7 @@ int main(int argc, char** argv)
   }
   catch (std::runtime_error& ex)
   {
-    std::cerr << "Exception while adding: " << ex.what() << std::endl;
+    cerr << "Exception while adding: " << ex.what() << endl;
     return 1;
   }
 
@@ -112,13 +227,13 @@ int main(int argc, char** argv)
   try
   {
     e_source
-      ->link(e_hud, caps_informat)
+      ->link(e_hud)
       ->link(e_cvt)
-      ->link(e_sink, caps_outformat);
+      ->link(e_sink);
   }
   catch(const std::runtime_error& error)
   {
-    std::cerr << "Exception while linking: " << error.what() << std::endl;
+    cerr << "Exception while linking: " << error.what() << endl;
   }
 
 
@@ -131,14 +246,14 @@ int main(int argc, char** argv)
   bus->add_watch(sigc::ptr_fun(&on_bus_message));
 
   // Let the HUD figure out frame size and stuff
-  std::cout << "Setting to PAUSED." << std::endl;
+  cout << "Setting to PAUSED." << endl;
   pipeline->set_state(Gst::STATE_PAUSED);
 
   // Go!
-  std::cout << "Setting to PLAYING." << std::endl;
+  cout << "Setting to PLAYING." << endl;
   pipeline->set_state(Gst::STATE_PLAYING);
 
-  std::cout << "Running." << std::endl;
+  cout << "Running." << endl;
   //mainloop->run();
 
   stop = false;
@@ -151,7 +266,7 @@ int main(int argc, char** argv)
   }
 
   // Clean up nicely:
-  std::cout << "Returned. Setting state to NULL." << std::endl;
+  cout << "Returned. Setting state to NULL." << endl;
   pipeline->set_state(Gst::STATE_NULL);
 
 

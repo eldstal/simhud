@@ -28,12 +28,6 @@ using std::endl;
 SimHUD::SimHUD() {
   bin = Gst::Bin::create("sim-hud");
 
-  RefPtr<Element> identity = ElementFactory::create_element("identity");
-
-  e_timestamp = ElementFactory::create_element("clockoverlay");
-  setupTextElement(e_timestamp, 0, 0.0);
-  e_timestamp->set_property<ustring>("time-format", "%F %T");
-
   // gstreamermm doesn't have wrapers for these signal functions. We use the C API.
   e_overlay = ElementFactory::create_element("cairooverlay");
   this->info_valid = false;
@@ -48,23 +42,25 @@ SimHUD::SimHUD() {
                    this);
 
 
+  e_timestamp = ElementFactory::create_element("clockoverlay");
+  setupTextElement(e_timestamp, 0, 0.0);
+  e_timestamp->set_property<ustring>("time-format", "%F %T");
+
   try {
     bin
-      ->add(identity)
-      ->add(e_timestamp)
-      ->add(e_overlay);
+      ->add(e_overlay)
+      ->add(e_timestamp);
 
-    identity
-      ->link(e_timestamp)
-      ->link(e_overlay);
+    e_overlay
+      ->link(e_timestamp);
 
   } catch (const std::runtime_error& ex) {
     std::cerr << "Exception while adding: " << ex.what() << std::endl;
   }
 
   // Map out the sink (input) and source (output) of our HUD filter
-  bin->add_ghost_pad(identity, "sink", "sink");
-  bin->add_ghost_pad(e_overlay, "src", "src");
+  bin->add_ghost_pad(e_overlay, "sink", "sink");
+  bin->add_ghost_pad(e_timestamp, "src", "src");
 
 }
 
@@ -146,6 +142,10 @@ void SimHUD::prepare_overlay(GstElement* overlay, GstCaps* caps, gpointer hud) {
     cerr << "Warning: Invalid capabilities!" << endl;
   } else {
     self->info_valid = true;
+
+    int w = GST_VIDEO_INFO_WIDTH(self->stream_info);
+    int h = GST_VIDEO_INFO_HEIGHT(self->stream_info);
+    cerr << "Overlay prepared for rendering at " << w << "x" << h << endl;
   }
 
 }
