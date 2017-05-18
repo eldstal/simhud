@@ -21,7 +21,8 @@ typedef struct {
   } gyro;                 // Rotational velocity about each axis
 
   struct {
-    float x, y, z;        // Compass reading
+    float p, y, r;        // Compass reading, with 0 degrees being
+                          // level, north, and level, respectively
   } heading;
 
   struct {

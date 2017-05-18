@@ -52,6 +52,9 @@ private:
 
   // Draw the radar display
   static void draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo, double width, double height);
+
+  // Draw the radar display
+  static void draw_compass(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo, double width, double height);
 };
 
 

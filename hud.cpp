@@ -250,6 +250,24 @@ void SimHUD::draw_overlay(GstElement* overlay, cairo_t * cr, guint64 timestamp, 
   cairo->restore();
 
 
+  //
+  // Draw the compass under the radar
+  //
+  int cw = rw;
+  int ch = cw;
+  int cx = rx;
+  int cy = ry + rh + margin;
+  cairo->save();
+    cairo->set_source_rgba(0.0, 0.0, 0.0, shading);
+    cairo->rectangle(cx, cy, cw, ch);
+    cairo->fill();
+
+    cairo->begin_new_path();
+    cairo->translate(cx+padding, cy+padding);
+    draw_compass(sens, cairo, cw-(2*padding), ch-(2*padding));
+  cairo->restore();
+
+
 }
 
 void SimHUD::draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo, double width, double height) {
@@ -314,6 +332,67 @@ void SimHUD::draw_radar(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo,
     cairo->line_to(ex,ey);
 
   }
+
+  cairo->close_path();
+  cairo->stroke();
+}
+
+void SimHUD::draw_compass(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cairo, double width, double height) {
+  cairo->set_line_width(1.5);
+  //cairo->rectangle(0, 0, width, height);
+  //cairo->stroke();
+
+  // The width of the needle at the center
+  double tw = width / 8;
+
+  // Length of tick marks
+  double ticklen = width / 16;
+
+  // Centerpoint is the middle of the rectangle
+  double cx = width/2, cy = height/2;
+
+  // Tick marks
+  for (float angle = 0; angle < 360; angle +=15) {
+    cairo->save();
+      cairo->translate(cx, cy);
+      cairo->rotate(RAD(angle));
+      cairo->translate(-cx, -cy);
+
+      cairo->set_source_rgb(0.7, 0.7, 0.7);
+      cairo->move_to(cx, 0);
+      cairo->line_to(cx, ticklen);
+      cairo->stroke();
+    cairo->restore();
+  }
+
+  // Compass needle
+  cairo->save();
+    cairo->translate(cx, cy);
+    cairo->rotate(RAD(sens.heading.y));
+    cairo->translate(-cx, -cy);
+
+    // Draw the north half of the needle
+    cairo->set_source_rgb(0.8, 0.0, 0.0);
+    cairo->set_line_width(0.8);
+    cairo->move_to(cx, 0);
+    cairo->line_to(cx-(tw/2), cy);
+    cairo->line_to(cx+(tw/2), cy);
+    cairo->close_path();
+    cairo->fill();
+
+    // Draw the south half of the needle
+    cairo->set_source_rgb(1.0, 1.0, 1.0);
+    cairo->set_line_width(0.8);
+    cairo->move_to(cx, height);
+    cairo->line_to(cx-(tw/2), cy);
+    cairo->line_to(cx+(tw/2), cy);
+    cairo->close_path();
+    cairo->fill();
+  cairo->restore();
+
+  cairo->begin_new_path();
+  cairo->set_source_rgb(1, 1, 1);
+  // Start our "pie slice" at the tip
 
   cairo->close_path();
   cairo->stroke();

@@ -129,6 +129,13 @@ void query_gyro(SensorValues& out) {
 }
 
 void query_heading(SensorValues& out) {
+  static SineSource<float> p(3450, 0,  15, 4);
+  static SineSource<float> y(4450, 0,  25, 4);
+  static SineSource<float> r(6450, 0,  8, 1);
+
+  out.heading.p = p.next();
+  out.heading.y = y.next();
+  out.heading.r = r.next();
 }
 
 void query_radar(SensorValues& out) {

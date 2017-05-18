@@ -102,7 +102,7 @@ Glib::RefPtr<Gst::Bin> v4l_webcam(const char* source) {
   // Define filtering capabilities to force video formats
   caps_capformat  = Gst::Caps::create_simple("video/x-raw");
   caps_capformat->set_value("framerate", Gst::Fraction(30,1));
-  caps_capformat->set_value("width", 1920);
+  //caps_capformat->set_value("width", 1920);
 
   try {
     ret
@@ -205,7 +205,7 @@ int main(int argc, char** argv)
   e_cvt = Gst::ElementFactory::create_element("videoconvert");
 
   e_sink = Gst::ElementFactory::create_element("autovideosink");
-  e_sink->set_property<bool>("sync", true);
+  e_sink->set_property<bool>("sync", false);
 
 
   // We must add the elements to the pipeline before linking them:
