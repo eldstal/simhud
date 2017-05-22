@@ -1,7 +1,7 @@
 #pragma once
 #include <inttypes.h>
 
-const int SENSOR_RADAR_STEPS = 36;
+const int SENSOR_RADAR_STEPS = 8;
 
 typedef struct {
   float   temp_external;     // Degrees C

@@ -374,7 +374,7 @@ void SimHUD::draw_compass(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cair
     // Draw the north half of the needle
     cairo->set_source_rgb(0.8, 0.0, 0.0);
     cairo->set_line_width(0.8);
-    cairo->move_to(cx, 0);
+    cairo->move_to(cx, ticklen);
     cairo->line_to(cx-(tw/2), cy);
     cairo->line_to(cx+(tw/2), cy);
     cairo->close_path();
@@ -383,7 +383,7 @@ void SimHUD::draw_compass(SensorValues& sens, Cairo::RefPtr<Cairo::Context> cair
     // Draw the south half of the needle
     cairo->set_source_rgb(1.0, 1.0, 1.0);
     cairo->set_line_width(0.8);
-    cairo->move_to(cx, height);
+    cairo->move_to(cx, height-ticklen);
     cairo->line_to(cx-(tw/2), cy);
     cairo->line_to(cx+(tw/2), cy);
     cairo->close_path();

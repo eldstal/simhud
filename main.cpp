@@ -262,7 +262,7 @@ int main(int argc, char** argv)
     query_sensors(values);
     hud->set_values(values);
 
-    usleep(500000);
+    usleep(100000);
   }
 
   // Clean up nicely:
